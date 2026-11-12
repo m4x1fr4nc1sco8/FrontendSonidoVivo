@@ -1,0 +1,12 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* Evita que los botones y precios se estiren hacia abajo */
+.card-title, .card-text, button {
+  word-break: normal;
+  white-space: normal;
+}
