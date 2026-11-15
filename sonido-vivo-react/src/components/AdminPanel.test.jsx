@@ -93,7 +93,7 @@ describe('Suite de Pruebas Unitarias - AdminPanel (10 Tests)', () => {
     );
     const botonesStock = screen.getAllByText('+5 Stock');
     fireEvent.click(botonesStock[0]);
-    expect(mockUpdateStock).toHaveBeenCalledWith(1, 10);
+    expect(mockUpdateStock).toHaveBeenCalledWith(1, 5);
   });
 
   // 7. Eventos y Props: Eliminar producto

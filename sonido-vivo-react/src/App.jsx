@@ -7,29 +7,28 @@ import { AdminPanel } from './components/AdminPanel';
 import {
   fetchProductos,
   fetchBoletas,
+  fetchBoletasUsuario,
   apiSumarStock,
   apiCrearProducto,
   apiEliminarProducto,
   apiCambiarEstadoBoleta,
+  apiEliminarBoleta,
   getStoredUser,
   logoutApi
 } from './services/api';
 import './index.css';
 
 export function App() {
-  // Estados de datos
   const [productos, setProductos] = useState([]);
   const [pedidos, setPedidos] = useState([]);
   const [carrito, setCarrito] = useState([]);
 
-  // Estados de UI
   const [categoriaSel, setCategoriaSel] = useState('todos');
   const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [codigoTracking, setCodigoTracking] = useState('');
   const [trackingResultado, setTrackingResultado] = useState(null);
 
-  // Cargar productos desde Spring Boot al iniciar
   const cargarProductos = async () => {
     try {
       const lista = await fetchProductos();
@@ -39,15 +38,20 @@ export function App() {
     }
   };
 
-  // Cargar boletas (solo si es Admin o Vendedor)
+  // Cargar boletas según el rol: todas para Admin/Vendedor, o historial propio para Cliente
   const cargarPedidos = async () => {
-    if (!currentUser || currentUser.role === 'Cliente') {
+    if (!currentUser) {
       setPedidos([]);
       return;
     }
     try {
-      const lista = await fetchBoletas();
-      setPedidos(lista);
+      if (currentUser.role === 'Cliente') {
+        const misCompras = await fetchBoletasUsuario(currentUser.id);
+        setPedidos(misCompras);
+      } else {
+        const lista = await fetchBoletas();
+        setPedidos(lista);
+      }
     } catch (error) {
       console.error('Error cargando pedidos:', error);
     }
@@ -158,6 +162,17 @@ export function App() {
     try {
       await apiCambiarEstadoBoleta(id, nuevoEstado);
       await cargarPedidos();
+      await cargarProductos();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteOrder = async (id) => {
+    try {
+      await apiEliminarBoleta(id);
+      await cargarPedidos();
+      await cargarProductos();
     } catch (err) {
       alert(err.message);
     }
@@ -166,6 +181,7 @@ export function App() {
   const handleCerrarSesion = () => {
     logoutApi();
     setCurrentUser(null);
+    setTrackingResultado(null);
   };
 
   // Búsqueda de Tracking
@@ -180,7 +196,6 @@ export function App() {
     setTrackingResultado(pedidoEncontrado || 'no_encontrado');
   };
 
-  // Productos filtrados
   const productosFiltrados = productos.filter((prod) => {
     if (
       !categoriaSel ||
@@ -244,9 +259,69 @@ export function App() {
           pedidos={pedidos}
           onUpdateStock={handleUpdateStock}
           onChangeOrderStatus={handleChangeOrderStatus}
+          onDeleteOrder={handleDeleteOrder}
           onAddProduct={handleAddProduct}
           onDeleteProduct={handleDeleteProduct}
         />
+      )}
+
+      {/* HISTORIAL DE COMPRAS DEL CLIENTE */}
+      {currentUser?.role === 'Cliente' && (
+        <section className="container my-4" id="mis-compras">
+          <div className="card border-0 shadow-sm p-4 bg-light">
+            <h4 className="fw-bold mb-3">🧾 Mi Historial de Compras</h4>
+            {pedidos.length === 0 ? (
+              <p className="text-muted mb-0">Aún no has realizado compras en Sonido Vivo.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-sm table-hover align-middle bg-white rounded mb-0">
+                  <thead className="table-dark">
+                    <tr>
+                      <th>Código</th>
+                      <th>Fecha</th>
+                      <th>Detalle</th>
+                      <th>Dirección</th>
+                      <th>Total</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pedidos.map((comp) => (
+                      <tr key={comp.id}>
+                        <td className="fw-bold text-primary">{comp.id}</td>
+                        <td>{comp.fecha}</td>
+                        <td>
+                          <ul className="list-unstyled small mb-0">
+                            {comp.items?.map((item, idx) => (
+                              <li key={idx}>
+                                • {item.nombre} <strong>(x{item.cantidad})</strong>
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                        <td className="small">{comp.direccion}</td>
+                        <td className="fw-bold">${Number(comp.total).toLocaleString('es-CL')}</td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              comp.estado === 'DESPACHADO'
+                                ? 'bg-success'
+                                : comp.estado === 'CANCELADO'
+                                ? 'bg-danger'
+                                : 'bg-warning text-dark'
+                            }`}
+                          >
+                            {comp.estado}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {/* SECCIÓN DE CONSULTA DE TRACKING */}
@@ -312,66 +387,15 @@ export function App() {
       <div className="container my-5" id="catalogo">
         <h2 className="text-center mb-4">Catálogo de Productos</h2>
         <div className="d-flex justify-content-center flex-wrap gap-2 mb-4">
-          <button
-            className={`btn ${categoriaSel === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('todos')}
-          >
-            Todos
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Guitarras' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Guitarras')}
-          >
-            Guitarras
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Bajos' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Bajos')}
-          >
-            Bajos
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Baterías' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Baterías')}
-          >
-            Baterías
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Teclados' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Teclados')}
-          >
-            Teclados
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Amplificadores' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Amplificadores')}
-          >
-            Amplificadores
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Micrófonos' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Micrófonos')}
-          >
-            Micrófonos
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Pedales' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Pedales')}
-          >
-            Pedales
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Estudio' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Estudio')}
-          >
-            Estudio
-          </button>
-          <button
-            className={`btn ${categoriaSel === 'Accesorios' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setCategoriaSel('Accesorios')}
-          >
-            Accesorios
-          </button>
+          {['todos', 'Guitarras', 'Bajos', 'Baterías', 'Teclados', 'Amplificadores', 'Micrófonos', 'Pedales', 'Estudio', 'Accesorios'].map((cat) => (
+            <button
+              key={cat}
+              className={`btn ${categoriaSel === cat ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setCategoriaSel(cat)}
+            >
+              {cat === 'todos' ? 'Todos' : cat}
+            </button>
+          ))}
         </div>
 
         <div className="row g-4">

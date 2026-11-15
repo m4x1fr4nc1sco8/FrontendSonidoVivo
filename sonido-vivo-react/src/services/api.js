@@ -1,7 +1,6 @@
 // src/services/api.js
 const API_URL = 'http://localhost:8080/api/v1';
 
-// Obtener headers con el Token JWT si hay sesión activa
 const getAuthHeaders = () => {
   const token = localStorage.getItem('sv_token');
   return {
@@ -10,7 +9,6 @@ const getAuthHeaders = () => {
   };
 };
 
-// Mapear rol de Spring Security al formato visual de React
 export const mapRolVisual = (rolBackend) => {
   if (rolBackend === 'ROLE_ADMINISTRADOR') return 'Administrador';
   if (rolBackend === 'ROLE_VENDEDOR') return 'Vendedor';
@@ -55,7 +53,6 @@ export const fetchProductos = async () => {
   if (!res.ok) throw new Error('Error al cargar productos');
   const data = await res.json();
 
-  // Adaptamos los campos del Backend al formato exacto que esperan ProductCard y AdminPanel
   return data.map((p) => ({
     id: p.id,
     nombre: p.nombre,
@@ -107,14 +104,8 @@ export const apiEliminarProducto = async (id) => {
 };
 
 // --- BOLETAS / PEDIDOS ---
-export const fetchBoletas = async () => {
-  const res = await fetch(`${API_URL}/boletas`, {
-    headers: getAuthHeaders()
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-
-  return data.map((b) => ({
+const mapearBoletas = (data) =>
+  data.map((b) => ({
     id: `SV-${b.id}`,
     rawId: b.id,
     cliente: b.usuario ? b.usuario.nombre : 'Cliente',
@@ -128,6 +119,23 @@ export const fetchBoletas = async () => {
       precio: d.precioUnitario
     }))
   }));
+
+export const fetchBoletas = async () => {
+  const res = await fetch(`${API_URL}/boletas`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return mapearBoletas(data);
+};
+
+export const fetchBoletasUsuario = async (usuarioId) => {
+  const res = await fetch(`${API_URL}/boletas/usuario/${usuarioId}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return mapearBoletas(data);
 };
 
 export const apiCrearBoleta = async ({ usuarioId, direccion, carrito }) => {
@@ -156,4 +164,13 @@ export const apiCambiarEstadoBoleta = async (idConPrefijo, nuevoEstado) => {
   });
   if (!res.ok) throw new Error('Error al cambiar estado del pedido');
   return await res.json();
+};
+
+export const apiEliminarBoleta = async (idConPrefijo) => {
+  const rawId = String(idConPrefijo).replace('SV-', '');
+  const res = await fetch(`${API_URL}/boletas/${rawId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Error al eliminar el pedido');
 };

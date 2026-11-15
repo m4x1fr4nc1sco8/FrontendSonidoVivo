@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 
 export function AdminPanel({
   productos,
-  pedidos,
+  pedidos = [],
   onUpdateStock,
   onChangeOrderStatus,
+  onDeleteOrder,
   onAddProduct,
   onDeleteProduct
 }) {
@@ -117,7 +118,7 @@ export function AdminPanel({
                         <div className="d-flex justify-content-center gap-1">
                           <button
                             className="btn btn-outline-primary btn-sm py-0 px-2"
-                            onClick={() => onUpdateStock(prod.id, prod.stock + 5)}
+                            onClick={() => onUpdateStock(prod.id, 5)}
                             title="Añadir 5 unidades de stock"
                           >
                             +5 Stock
@@ -136,6 +137,74 @@ export function AdminPanel({
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        {/* Gestión de Pedidos de Clientes */}
+        <div className="col-12">
+          <div className="card border-0 shadow-sm p-3">
+            <h5 className="fw-bold mb-3">📦 Gestión de Pedidos (Cancelar / Eliminar)</h5>
+            {pedidos.length === 0 ? (
+              <p className="text-muted small mb-0">No hay pedidos registrados en el sistema.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-sm table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Código</th>
+                      <th>Cliente</th>
+                      <th>Fecha</th>
+                      <th>Total</th>
+                      <th>Estado</th>
+                      <th className="text-center">Acciones Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pedidos.map((ped) => (
+                      <tr key={ped.id}>
+                        <td className="fw-bold">{ped.id}</td>
+                        <td>{ped.cliente}</td>
+                        <td>{ped.fecha}</td>
+                        <td>${Number(ped.total).toLocaleString('es-CL')}</td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              ped.estado === 'DESPACHADO'
+                                ? 'bg-success'
+                                : ped.estado === 'CANCELADO'
+                                ? 'bg-danger'
+                                : 'bg-warning text-dark'
+                            }`}
+                          >
+                            {ped.estado}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="d-flex justify-content-center gap-2">
+                            {ped.estado !== 'CANCELADO' && (
+                              <button
+                                className="btn btn-outline-warning btn-sm py-0 px-2 fw-semibold"
+                                onClick={() => onChangeOrderStatus && onChangeOrderStatus(ped.id, 'CANCELADO')}
+                                title="Cancelar pedido y devolver stock"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                            <button
+                              className="btn btn-outline-danger btn-sm py-0 px-2"
+                              onClick={() => onDeleteOrder && onDeleteOrder(ped.id)}
+                              title="Eliminar registro del pedido"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
