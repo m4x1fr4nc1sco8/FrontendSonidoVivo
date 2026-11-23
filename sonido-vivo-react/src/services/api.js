@@ -154,7 +154,7 @@ export const apiCrearBoleta = async ({ usuarioId, direccion, carrito }) => {
   if (!res.ok) throw new Error('Error al procesar la compra en el servidor');
   return await res.json();
 };
-9+/8/8/8/8/8///////////////////////
+
 export const apiCambiarEstadoBoleta = async (idConPrefijo, nuevoEstado) => {
   const rawId = String(idConPrefijo).replace('SV-', '');
   const res = await fetch(`${API_URL}/boletas/${rawId}/estado`, {
